@@ -70,19 +70,33 @@ def run_segmentation(df: pd.DataFrame, n_components: int, n_clusters: int):
         inertias.append((k, km.inertia_))
         print(f"k={k}, inertia={km.inertia_:.2f}")
 
-    sil_scores = {}
     print("\nSilhouette scores (k=2..10) on PCA space:")
+    sil_scores = {}
+    max_samples = 20000  # you can lower this (e.g. 10000) if still slow
+    
+    X_pca_4 = X_pca[:, :4]
+    
     for k in range(2, 11):
-        km = KMeans(n_clusters=k, random_state=42, n_init=10)
-        labels = km.fit_predict(X_pca[:, :n_components])
-        score = silhouette_score(X_pca[:, :n_components], labels)
+        print(f"Computing silhouette for k = {k} ...")
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        labels = kmeans.fit_predict(X_pca_4)
+    
+        score = silhouette_score(
+            X_pca_4,
+            labels,
+            sample_size=min(max_samples, X_pca_4.shape[0]),
+            random_state=42,
+        )
         sil_scores[k] = score
-        print(f"k={k}, silhouette={score:.4f}")
-
-    km_final = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-    labels_final = km_final.fit_predict(X_pca[:, :n_components])
-    X_num_with_clusters = X_num.copy()
-    X_num_with_clusters["cluster"] = labels_final
+        print(f"  silhouette_score = {score:.4f}")
+    
+    print("\nSilhouette scores by k:")
+    for k, s in sil_scores.items():
+        print(f"k={k}: {s:.4f}")
+        km_final = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+        labels_final = km_final.fit_predict(X_pca[:, :n_components])
+        X_num_with_clusters = X_num.copy()
+        X_num_with_clusters["cluster"] = labels_final
 
     print("\nCluster sizes:")
     print(X_num_with_clusters["cluster"].value_counts().sort_index())
@@ -116,3 +130,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
